@@ -45,7 +45,7 @@ void printDirectory(std::vector<std::string> files, WINDOW *filesWin)
                  winWidth = 0;
 
   getmaxyx(stdscr, winHeight, winWidth);
-  wclear(filesWin);
+  werase(filesWin);
   box(filesWin, 0, 0);
 
   for (std::vector<std::string>::iterator it = files.begin(); it != files.end(); it++)
@@ -66,7 +66,7 @@ void printDirectory(std::vector<std::string> files, WINDOW *filesWin)
   doupdate();
 }
 
-void handleRename(std::string newFilename, std::vector<std::string> files, WINDOW *filesWin)
+void handleAlphanumericKeypress(std::string newFilename, std::vector<std::string> newFiles, std::vector<std::string> files, WINDOW *filesWin)
 {
   unsigned short numFiles = files.size(),
                  numLeadingZeroes = 1, 
@@ -88,11 +88,26 @@ void handleRename(std::string newFilename, std::vector<std::string> files, WINDO
     filesIdx++;
   }
 
-  
   printDirectory(files, filesWin);
+  move(0, (25 + newFilename.length()));
 }
 
+void writeRenameToDisk(std::vector<std::string> newFiles, std::vector<std::string> files)
+{
 
+}
+
+void printInstructions(unsigned short *termWidth)
+{
+  attron(A_BOLD);
+  attron(COLOR_PAIR(1));
+
+  std::string instructions = "(<ENTER> to rename, <CTRL+C> to quit)";
+  mvprintw(0, (*termWidth - instructions.length()), instructions.c_str());
+
+  attroff(A_BOLD);
+  attroff(COLOR_PAIR(1));
+}
 
 int main(int argc, char* argv[])
 {
@@ -105,13 +120,14 @@ int main(int argc, char* argv[])
                  termHeight = 0,
                  termWidth = 0;
 
-  char ch;
+  int ch;
 
   initscr();
   getmaxyx(stdscr, termHeight, termWidth);
   filesWin = newwin(termHeight - filesPanelY, termWidth, filesPanelY, filesPanelX);
 
   std::vector<std::string> files = getFiles();
+  std::vector<std::string> newFiles;
   std::string newFilename;
   
   start_color();
@@ -119,25 +135,46 @@ int main(int argc, char* argv[])
  
   filesPanel = new_panel(filesWin);
   printDirectory(files, filesWin);
-
-  attron(A_BOLD);
-  attron(COLOR_PAIR(1));
-
-  std::string instructions = "(<ENTER> to rename, <CTRL+C> to quit)";
-  mvprintw(0, (termWidth - instructions.length()), instructions.c_str());
-
-  attroff(A_BOLD);
-  attroff(COLOR_PAIR(1));
+  printInstructions(&termWidth);
 
   mvprintw(0, 0, "Enter template filename: ");
    
   attron(A_BOLD);
   attron(COLOR_PAIR(1));
+
+  noecho();
   
   while ((ch = getch()) != KEY_F(1))
   {
-    newFilename += ch;
-    handleRename(newFilename, files, filesWin);
+    noecho();
+    switch(ch)
+    {
+      case 127:
+        if (newFilename.length() > 0) {
+          newFilename.pop_back();
+
+          move(0, 25);
+          clrtoeol();
+       
+          mvprintw(0, 25, newFilename.c_str());
+          printInstructions(&termWidth);
+          attron(A_BOLD);
+          attron(COLOR_PAIR(1));
+
+          handleAlphanumericKeypress(newFilename, newFiles, files, filesWin);
+        }
+        break;
+
+      case 10:
+        writeRenameToDisk(newFiles, files);
+        endwin();
+        return 0;
+
+      default:
+        newFilename += ch;
+        mvprintw(0, 25, newFilename.c_str());
+        handleAlphanumericKeypress(newFilename, newFiles, files, filesWin);
+    }
   }
 
   endwin();
