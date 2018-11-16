@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 
 std::vector<std::string> getFiles() 
 {
@@ -69,20 +70,31 @@ void printDirectory(std::vector<std::string> files, WINDOW *filesWin)
 void handleAlphanumericKeypress(std::string newFilename, std::vector<std::string> newFiles, std::vector<std::string> files, WINDOW *filesWin)
 {
   unsigned short numFiles = files.size(),
-                 numLeadingZeroes = 1, 
-                 filesIdx = 0;
+                 maxDigitCount = 1, 
+                 filesIdx = 1,
+                 digitIdx = 0,
+                 idx = 0;
 
   while ((numFiles = numFiles / 10) > 0)
   {
-    numLeadingZeroes++;
+    maxDigitCount++;
   }
   
   for (std::vector<std::string>::iterator it = files.begin(); it != files.end(); it++)
   {
+    unsigned short numDigits = 0;
+    idx = filesIdx - 1;
+
+    std::string fileNumber;
+    unsigned short digitIdx = maxDigitCount - numDigits;
+
+    fileNumber = std::setfill('0');
+    fileNumber = std::setw(maxDigitCount);
+    
     std::string period = ".";
     std::string dash = "-";
     std::string extension = period.append((*it).substr((*it).find_last_of(".") + 1));
-    std::string fileNumber = dash.append(std::to_string(filesIdx).append(extension));
+    fileNumber = dash.append(fileNumber.append(std::to_string(filesIdx)).append(extension));
     (*it) = newFilename;
     (*it) = (*it).append(fileNumber);
     filesIdx++;
