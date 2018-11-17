@@ -1,6 +1,6 @@
 ## srnm
 
-A deliberately simple utility that sequentially (and dumbly) renames the files in the directory it's invoked from to whichever string is entered. Useful for bulk renaming things like wallpapers, photos, etc., with basically no learning curve.
+A deliberately simple ncurses utility that sequentially (and dumbly) renames the files in the directory it's invoked from to whichever string is entered. Useful for bulk renaming things like wallpapers, photos, etc., with basically no learning curve.
 
 ## Usage
 
