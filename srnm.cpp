@@ -7,6 +7,19 @@
 #include <vector>
 #include <iostream>
 
+//-----------------------------------------------------------------------------------
+//
+// (11/26) TODO: consider adding 'undo' functionality by which the previous-most
+// batch rename can be undone. Write the old filename vector to disk in a 
+// hidden file (possibly in /tmp, though consider whether it should survive a 
+// reboot), which is replaced on each commit to disk.
+//
+//-----------------------------------------------------------------------------------
+//
+// Iterate through the current working directory and assemble a vector with
+// all the original filenames. 
+//-----------------------------------------------------------------------------------
+
 std::vector<std::string> getFiles() 
 {
   DIR *directory;
@@ -31,6 +44,8 @@ std::vector<std::string> getFiles()
 
   return files;
 }
+
+// Called once <enter> has been hit twice. Commit our renaming to disk.
 
 void writeRenameToDisk(std::vector<std::string> newFiles, std::vector<std::string> files)
 {
@@ -58,6 +73,9 @@ void writeRenameToDisk(std::vector<std::string> newFiles, std::vector<std::strin
 
   closedir(directory);
 }
+
+// Iterate through and print whatever is being passed in the files vector to
+// the filesWin window.
 
 void printDirectory(std::vector<std::string> *files, WINDOW *filesWin)
 {
@@ -92,6 +110,10 @@ void printDirectory(std::vector<std::string> *files, WINDOW *filesWin)
   wattroff(filesWin, A_BOLD | COLOR_PAIR(2));
 }
 
+// Get the number of digits passed by dividing by ten and incrementing a counter until we
+// can't divide by ten anymore. Lets us add some nice leading zeroes to our filenames. 
+// Pass by value on this one to avoid altering any original values.
+
 unsigned short getDigitCount(unsigned short digit)
 {
   unsigned short numDigits = 1;
@@ -103,6 +125,12 @@ unsigned short getDigitCount(unsigned short digit)
 
   return numDigits;
 }
+
+
+// Get the number of leading zeroes for the currently-printed file by subtracting the number
+// of digits in its index from the number of digits in the number of files in the current
+// directory. For example, if we have 103 files in the current directory, and are currently
+// printing file #27, add one leading zero (3 - 2 = 1) to the file descriptor.
 
 std::string getLeadingZeroes(unsigned short *maxDigitCount, unsigned short *filesIdx)
 {
@@ -116,6 +144,11 @@ std::string getLeadingZeroes(unsigned short *maxDigitCount, unsigned short *file
 
   return leadingZeroes;
 }
+
+
+// Sequentially rename all the files on each keypress. Keep track of two vectors: one
+// containing all the old names in the directory, and one containing the re-named items.
+// Add leading zeroes to each file descriptor before shipping off to be printed.
 
 void handleAlphanumericKeypress(std::string newFilename, std::vector<std::string> *newFiles, std::vector<std::string> *files, WINDOW *filesWin)
 {
@@ -139,6 +172,8 @@ void handleAlphanumericKeypress(std::string newFilename, std::vector<std::string
   printDirectory(newFiles, filesWin);
   move(0, (27 + newFilename.length()));
 }
+
+// A couple functions for formatting and printing onscreen feedback
 
 void printInstructions(unsigned short *termWidth)
 {
