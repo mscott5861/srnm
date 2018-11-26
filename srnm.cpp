@@ -96,7 +96,7 @@ void printDirectory(std::vector<std::string> *files, WINDOW *filesWin)
   wattron(filesWin, A_BOLD | COLOR_PAIR(2));
   for (std::vector<std::string>::iterator it = (*files).begin(); it != (*files).end(); it++)
     {
-      if (filesIdx > 0 && filesIdx % (winHeight - 7) == 0)
+      if (filesIdx > 0 && filesIdx % (winHeight - 9) == 0)
       {
         filesX += 20;
         filesY = padding;
