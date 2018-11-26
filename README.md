@@ -19,7 +19,7 @@ sudo apt-get install libncurses5-dev libncursesw5-dev
 git clone https://github.com/mscott5861/srnm.git
 cd srnm
 g++ srnm.cpp -lncurses -lpanel -o srnm
-sudo ln -s #full-path-of-compiled-srnm#/srnm /usr/bin/srnm
+sudo ln -s /usr/bin/srnm ##full-path-of-compiled-srnm##/srnm 
 ```
 
 
