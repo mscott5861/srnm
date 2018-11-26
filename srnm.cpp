@@ -109,7 +109,7 @@ std::string getLeadingZeroes(unsigned short *maxDigitCount, unsigned short *file
   std::string leadingZeroes;
   unsigned short idx = 0;
 
-  for (idx = 0; idx < (getDigitCount(*maxDigitCount) - (getDigitCount(*filesIdx) - 1)); idx++)
+  for (idx = 0; idx < *maxDigitCount - getDigitCount(*filesIdx); idx++)
   {
     leadingZeroes.append("0");
   }
@@ -122,7 +122,7 @@ void handleAlphanumericKeypress(std::string newFilename, std::vector<std::string
   unsigned short numFiles = files->size(),
                  maxDigitCount = getDigitCount(numFiles), 
                  filesIdx = 1;
-  
+
   for (std::vector<std::string>::iterator it = (*newFiles).begin(); it != (*newFiles).end(); it++)
   {
     std::string leadingZeroes = getLeadingZeroes(&maxDigitCount, &filesIdx),
