@@ -14,6 +14,9 @@
 // hidden file (possibly in /tmp, though consider whether it should survive a 
 // reboot), which is replaced on each commit to disk.
 //
+// (11/26) TODO: handle filenames that become too long--or directories that contain
+// too many files--to correctly print to the filesWin.
+//
 //-----------------------------------------------------------------------------------
 // Iterate through the current working directory and assemble a vector with
 // all the original filenames. 
@@ -33,7 +36,11 @@ std::vector<std::string> getFiles()
     {
       std::string filename = dir->d_name;
 
-      if (filename.compare(".") != 0 && filename.compare("..") != 0) {
+      //--------------------------------------------------------------------------------------------------------
+      // The first conditional checks for (and excludes) hidden files; the second two exclude the current and 
+      // parent directories.
+      //--------------------------------------------------------------------------------------------------------
+      if (filename.substr(0,1).compare(".") != 0 && filename.compare(".") != 0 && filename.compare("..") != 0) {
         files.push_back(filename);
       }
     }
@@ -82,24 +89,26 @@ void writeRenameToDisk(std::vector<std::string> newFiles, std::vector<std::strin
 //-----------------------------------------------------------------------------------
 void printDirectory(std::vector<std::string> *files, WINDOW *filesWin)
 {
-  unsigned short padding = 2,
+  unsigned short filesWinPadding = 2,
                  filesIdx = 0,
                  filesX = 3,
-                 filesY = padding,
+                 filesY = filesWinPadding,
                  winHeight = 0,
-                 winWidth = 0;
+                 winWidth = 0,
+                 filenameLength = 0;
 
   getmaxyx(stdscr, winHeight, winWidth);
   werase(filesWin);
-  box(filesWin, 0, 0);
+  //box(filesWin, 0, 0);
 
   wattron(filesWin, A_BOLD | COLOR_PAIR(2));
   for (std::vector<std::string>::iterator it = (*files).begin(); it != (*files).end(); it++)
     {
+      unsigned short columnWidth = (*it).length() + 3;
       if (filesIdx > 0 && filesIdx % (winHeight - 9) == 0)
       {
-        filesX += 20;
-        filesY = padding;
+        filesX += columnWidth;
+        filesY = filesWinPadding;
       }
 
       mvwprintw(filesWin, filesY, filesX, (*it).c_str());
@@ -246,7 +255,8 @@ int main(int argc, char* argv[])
   
   start_color();
   init_pair(1, COLOR_RED, COLOR_BLACK);
-  init_pair(2, COLOR_GREEN, COLOR_BLACK);
+  init_pair(2, COLOR_WHITE, COLOR_RED);
+  wbkgd(filesWin, COLOR_PAIR(2));
  
   filesPanel = new_panel(filesWin);
   printDirectory(&files, filesWin);
@@ -260,6 +270,7 @@ int main(int argc, char* argv[])
   
   while ((ch = getch()) != KEY_F(1))
   {
+    //mvprintw(0, 0, std::to_string(ch).c_str());
     noecho();
     switch(ch)
     {
@@ -279,6 +290,7 @@ int main(int argc, char* argv[])
         }
         break;
 
+      // ENTER
       case 10:
         if (!hasAccepted) {
           printWarning(warningPanel, warningWin);
@@ -290,8 +302,13 @@ int main(int argc, char* argv[])
         }
         break;
 
+      // SPACE
+      case 32:
+        break;
+      
       default:
-        if (!hasAccepted && newFilename.length() < 10) {
+        char temp = ch;
+        if (!hasAccepted && newFilename.length() < 15) {
           newFilename += ch;
           mvprintw(1, 30, newFilename.c_str());
           handleAlphanumericKeypress(newFilename, &newFiles, &files, filesWin);
