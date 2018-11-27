@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 //-----------------------------------------------------------------------------------
 //
@@ -53,33 +54,31 @@ std::vector<std::string> getFiles()
 
 
 //-----------------------------------------------------------------------------------
-// Called once <enter> has been hit twice. Commit our renaming to disk.
+// Called once <enter> has been hit twice. Commit our renaming to disk. Iterate once
+// and rename everything with a guaranteed-unique placeholder name, then iterate 
+// again with the user-provided string; this prevents an issue when "renaming" files 
+// to the same name they were before in which the incrementing counter causes an 
+// overwrite of files while iterating. 
 //-----------------------------------------------------------------------------------
 void writeRenameToDisk(std::vector<std::string> newFiles, std::vector<std::string> files)
 {
-  DIR *directory;
-  struct dirent *dir;
-  directory = opendir(".");
   unsigned short idx = 0;
-
-  if (directory)
+  
+  for (std::vector<std::string>::iterator it = (files).begin(); it != (files).end(); it++)
   {
-    while ((dir = readdir(directory)) != NULL) 
-    {
-      std::string filename = dir->d_name;
-
-      if (filename.compare(".") != 0 && filename.compare("..") != 0) 
-      {
-        if (files[idx].compare(filename) == 0)
-        {
-          rename(filename.c_str(), newFiles[idx].c_str());
-          idx++;
-        }
-      }
-    }
+    std::string placeholder = "temp-" + std::to_string(idx);
+    rename((*it).c_str(), placeholder.c_str());
+    idx++;
   }
 
-  closedir(directory);
+  idx = 0;
+  
+  for (std::vector<std::string>::iterator it = (newFiles).begin(); it != (newFiles).end(); it++)
+  {
+    std::string placeholder = "temp-" + std::to_string(idx);
+    rename(placeholder.c_str(), newFiles[idx].c_str());
+    idx++;
+  }
 }
 
 
@@ -99,7 +98,6 @@ void printDirectory(std::vector<std::string> *files, WINDOW *filesWin)
 
   getmaxyx(stdscr, winHeight, winWidth);
   werase(filesWin);
-  //box(filesWin, 0, 0);
 
   wattron(filesWin, A_BOLD | COLOR_PAIR(2));
   for (std::vector<std::string>::iterator it = (*files).begin(); it != (*files).end(); it++)
@@ -242,7 +240,7 @@ int main(int argc, char* argv[])
                  termWidth = 0;
 
   int ch;
-  bool hasAccepted = false;
+  bool hasConfirmedRename = false;
 
   initscr();
   getmaxyx(stdscr, termHeight, termWidth);
@@ -252,7 +250,7 @@ int main(int argc, char* argv[])
   std::vector<std::string> files = getFiles(),
                            newFiles = files;
   std::string newFilename;
-  
+
   start_color();
   init_pair(1, COLOR_RED, COLOR_BLACK);
   init_pair(2, COLOR_WHITE, COLOR_RED);
@@ -267,15 +265,15 @@ int main(int argc, char* argv[])
   attron(A_BOLD | COLOR_PAIR(1));
 
   noecho();
-  
+ 
+  // Have to use actual keycodes for the following switch statements. Ncurses provides 
+  // macros for certain keys, but they don't seem to be working as they should.
   while ((ch = getch()) != KEY_F(1))
   {
-    //mvprintw(0, 0, std::to_string(ch).c_str());
     noecho();
     switch(ch)
     {
-      // KEY_BACKSPACE isn't currently working, so we'll use 127 instead.
-      case 127:
+      case 127: // BACKSPACE
         if (newFilename.length() > 0) {
           newFilename.pop_back();
 
@@ -290,11 +288,10 @@ int main(int argc, char* argv[])
         }
         break;
 
-      // ENTER
-      case 10:
-        if (!hasAccepted) {
+      case 10: // ENTER
+        if (!hasConfirmedRename) {
           printWarning(warningPanel, warningWin);
-          hasAccepted = true;
+          hasConfirmedRename = true;
         } else {
           writeRenameToDisk(newFiles, files);
           endwin();
@@ -302,13 +299,12 @@ int main(int argc, char* argv[])
         }
         break;
 
-      // SPACE
-      case 32:
+      case 32: // SPACEBAR
         break;
       
       default:
         char temp = ch;
-        if (!hasAccepted && newFilename.length() < 15) {
+        if (!hasConfirmedRename && newFilename.length() < 15) {
           newFilename += ch;
           mvprintw(1, 30, newFilename.c_str());
           handleAlphanumericKeypress(newFilename, &newFiles, &files, filesWin);
