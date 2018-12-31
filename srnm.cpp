@@ -15,13 +15,12 @@
 // hidden file (possibly in /tmp, though consider whether it should survive a 
 // reboot), which is replaced on each commit to disk.
 //
-// (11/26) TODO: handle filenames that become too long--or directories that contain
-// too many files--to correctly print to the filesWin.
-//
 //-----------------------------------------------------------------------------------
 // Iterate through the current working directory and assemble a vector with
 // all the original filenames. 
 //-----------------------------------------------------------------------------------
+
+int maxFilenameLength = 15;
 
 std::vector<std::string> getFiles() 
 {
@@ -72,7 +71,7 @@ void writeRenameToDisk(std::vector<std::string> newFiles, std::vector<std::strin
   }
 
   idx = 0;
-  
+
   for (std::vector<std::string>::iterator it = (newFiles).begin(); it != (newFiles).end(); it++)
   {
     std::string placeholder = "temp-" + std::to_string(idx);
@@ -94,22 +93,35 @@ void printDirectory(std::vector<std::string> *files, WINDOW *filesWin)
                  filesY = filesWinPadding,
                  winHeight = 0,
                  winWidth = 0,
+                 filesWinHeight = 0,
+                 filesWinWidth = 0,
                  filenameLength = 0;
 
+  int remainingWinWidth = 0;
+
   getmaxyx(stdscr, winHeight, winWidth);
+  getmaxyx(filesWin, filesWinHeight, filesWinWidth);
   werase(filesWin);
 
+  remainingWinWidth = filesWinWidth - 6 - maxFilenameLength;
+
   wattron(filesWin, A_BOLD | COLOR_PAIR(2));
-  for (std::vector<std::string>::iterator it = (*files).begin(); it != (*files).end(); it++)
+
+  for (std::vector<std::string>::iterator it = (*files).begin(); it != (*files).end() && remainingWinWidth > maxFilenameLength; it++)
     {
       unsigned short columnWidth = (*it).length() + 3;
+
       if (filesIdx > 0 && filesIdx % (winHeight - 9) == 0)
       {
         filesX += columnWidth;
         filesY = filesWinPadding;
+        remainingWinWidth -= columnWidth;
       }
 
-      mvwprintw(filesWin, filesY, filesX, (*it).c_str());
+      if (remainingWinWidth > maxFilenameLength) {
+        mvwprintw(filesWin, filesY, filesX, (*it).c_str());
+      }
+
       refresh();
       filesY++;
       filesIdx++;
@@ -304,7 +316,7 @@ int main(int argc, char* argv[])
       
       default:
         char temp = ch;
-        if (!hasConfirmedRename && newFilename.length() < 15) {
+        if (!hasConfirmedRename && newFilename.length() < maxFilenameLength) {
           newFilename += ch;
           mvprintw(1, 30, newFilename.c_str());
           handleAlphanumericKeypress(newFilename, &newFiles, &files, filesWin);
