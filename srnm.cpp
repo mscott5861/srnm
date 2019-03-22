@@ -8,6 +8,10 @@
 #include <iostream>
 #include <algorithm>
 
+int maxFilenameLength = 20;
+bool includeDirectories = true,
+     keyComboWinVisible = false;
+
 //-----------------------------------------------------------------------------------
 //
 // (11/26) TODO: consider adding 'undo' functionality by which the previous-most
@@ -16,39 +20,44 @@
 // reboot), which is replaced on each commit to disk.
 //
 //-----------------------------------------------------------------------------------
+// 
+// (03/22) TODO: refactor. Warning/keyCombo windows can be refactored, and there's
+// some redundancy in main().
+//
+//-----------------------------------------------------------------------------------
 // Iterate through the current working directory and assemble a vector with
 // all the original filenames. 
 //-----------------------------------------------------------------------------------
 
-int maxFilenameLength = 15;
-
 std::vector<std::string> getFiles() 
 {
   DIR *directory;
-  struct dirent *dir;
+  struct dirent **dir;
+  int numFiles, idx;
+
+  numFiles = scandir(".", &dir, 0, versionsort);
   std::vector<std::string> files;
 
-  directory = opendir(".");
-
-  if (directory)
+  if (numFiles >= 0)
   {
-    while ((dir = readdir(directory)) != NULL) 
+    for (idx = 0; idx < numFiles; idx++)
     {
-      std::string filename = dir->d_name;
+      std::string filename = dir[idx]->d_name;
 
       //--------------------------------------------------------------------------------------------------------
       // The first conditional checks for (and excludes) hidden files; the second two exclude the current and 
       // parent directories.
       //--------------------------------------------------------------------------------------------------------
       if (filename.substr(0,1).compare(".") != 0 && filename.compare(".") != 0 && filename.compare("..") != 0) {
-        files.push_back(filename);
+        if (includeDirectories == true || dir[idx]->d_type != DT_DIR) {
+          if (dir[idx]->d_type == DT_DIR) {
+            filename.append("/");
+          }
+          files.push_back(filename);
+        }
       }
     }
-
-  closedir(directory);
   }
-
-  std::sort (files.begin(), files.end());  
 
   return files;
 }
@@ -188,10 +197,9 @@ void handleAlphanumericKeypress(std::string newFilename, std::vector<std::string
   {
     std::string leadingZeroes = getLeadingZeroes(&maxDigitCount, &filesIdx),
                 period = ".",
-                dash = "-",
                 extension = period.append((*it).substr((*it).find_last_of(".") + 1));
 
-    leadingZeroes = dash.append(leadingZeroes.append(std::to_string(filesIdx)).append(extension));
+    leadingZeroes = leadingZeroes.append(std::to_string(filesIdx)).append(extension);
     (*it) = newFilename;
     (*it) = (*it).append(leadingZeroes);
     filesIdx++;
@@ -202,17 +210,47 @@ void handleAlphanumericKeypress(std::string newFilename, std::vector<std::string
 }
 
 //-----------------------------------------------------------------------------------
-// A couple functions for formatting and printing onscreen feedback
+// A few functions for formatting and printing onscreen feedback
 //-----------------------------------------------------------------------------------
 void printInstructions(unsigned short *termWidth)
 {
   attron(A_BOLD | COLOR_PAIR(1));
 
-  std::string instructions = "(<ENTER> to rename, <CTRL+C> to quit)";
+  std::string instructions = "(<?> for instructions)";
   mvprintw(1, (*termWidth - instructions.length() - 3), instructions.c_str());
 
   attroff(A_BOLD | COLOR_PAIR(1));
 }
+
+
+void printKeyCombos(PANEL *keyComboPanel, WINDOW *keyComboWin)
+{
+  unsigned short boxHeight = 0,
+                 boxWidth = 0;
+
+  keyComboPanel = new_panel(keyComboWin);
+  werase(keyComboWin);
+  box(keyComboWin, 0, 0);
+
+  std::string enter = "<ENTER> to rename",
+              ctrlD = "<CTRL-D> to toggle directories",
+              ctrlC = "<CTRL-C> to quit";
+
+  getmaxyx(keyComboWin, boxHeight, boxWidth);
+
+  wattron(keyComboWin, A_BOLD | COLOR_PAIR(1));
+
+  mvwprintw(keyComboWin, (boxHeight / 2) - 1, (boxWidth / 2) - (enter.length() / 2), enter.c_str());
+  mvwprintw(keyComboWin, (boxHeight / 2), (boxWidth / 2) - (ctrlD.length() / 2), ctrlD.c_str());
+  mvwprintw(keyComboWin, (boxHeight / 2) + 1, (boxWidth / 2) - (ctrlC.length() / 2), ctrlC.c_str());
+
+  wattroff(keyComboWin, A_BOLD | COLOR_PAIR(1));
+
+  move(0,0);
+  update_panels();
+  doupdate();
+}
+
 
 void printWarning(PANEL *warningPanel, WINDOW *warningWin)
 {
@@ -244,8 +282,8 @@ void printWarning(PANEL *warningPanel, WINDOW *warningWin)
 
 int main(int argc, char* argv[])
 {
-  WINDOW *filesWin, *warningWin;
-  PANEL *filesPanel, *warningPanel;
+  WINDOW *filesWin, *warningWin, *keyComboWin;
+  PANEL *filesPanel, *warningPanel, *keyComboPanel;
   cbreak();
 
   unsigned short filesPanelY = 3,
@@ -260,6 +298,7 @@ int main(int argc, char* argv[])
   getmaxyx(stdscr, termHeight, termWidth);
   filesWin = newwin((termHeight - filesPanelY - 2), termWidth - 6, filesPanelY, filesPanelX + 3);
   warningWin = newwin(termHeight / 2, termWidth / 2, (termHeight / 2) - (termHeight / 4), (termWidth / 2) - (termWidth / 4));
+  keyComboWin = newwin(termHeight / 2, termWidth / 2, (termHeight / 2) - (termHeight / 4), (termWidth / 2) - (termWidth / 4));
 
   std::vector<std::string> files = getFiles(),
                            newFiles = files;
@@ -313,7 +352,28 @@ int main(int argc, char* argv[])
         }
         break;
 
-      case 32: // SPACEBAR
+      case 63: // Question Mark
+        /*
+        if (keyComboWinVisible == false) {
+          printKeyCombos(keyComboPanel, keyComboWin);
+          keyComboWinVisible = true;
+        } else {
+          wborder(keyComboWin, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
+          delwin(keyComboWin);
+          printDirectory(&files, filesWin);
+        }*/
+        break;
+
+      case 4: // CTRL+D
+        includeDirectories = !includeDirectories;
+        files = getFiles(),
+        newFiles = files;
+        printDirectory(&files, filesWin);
+        printInstructions(&termWidth);
+        mvprintw(1, 3, "Enter sequential filename: ");
+        attron(A_BOLD | COLOR_PAIR(1));
+
+        noecho();
         break;
       
       default:

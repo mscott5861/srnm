@@ -25,4 +25,10 @@ sudo ln -s /usr/bin/srnm ##full-path-of-compiled-srnm##/srnm
 
 ## Usage
 
-`cd` to the directory whose files you'd like to rename, and just run `srnm`. Type in the new filename, press `Enter` to rename the files (followed by a confirmation), or `Ctrl+C` to exit the program.
+`cd` to the directory whose files you'd like to rename, and just run `srnm`. From within the program, start typing a new filename, and `srnm` will sequentially rename the files in the directory. Key presses and combinations are few:
+
+|Key(s)|Effect|
+|------|------|
+|<Enter> |Commit the renames to disk|
+|<Ctrl+D>|Toggle directories|
+|<Ctrl+C>|Quit `srnm`|
