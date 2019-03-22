@@ -48,6 +48,8 @@ std::vector<std::string> getFiles()
   closedir(directory);
   }
 
+  std::sort (files.begin(), files.end());  
+
   return files;
 }
 
