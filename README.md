@@ -29,6 +29,6 @@ sudo ln -s /usr/bin/srnm ##full-path-of-compiled-srnm##/srnm
 
 |Key(s)|Effect|
 |------|------|
-|<Enter> |Commit the renames to disk|
+|Enter |Commit the renames to disk|
 |<Ctrl+D>|Toggle directories|
 |<Ctrl+C>|Quit `srnm`|
